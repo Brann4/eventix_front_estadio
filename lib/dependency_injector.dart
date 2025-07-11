@@ -6,6 +6,7 @@ import 'package:eventix_estadio/features/domain/use_case/get_sector_by_id.dart';
 import 'package:eventix_estadio/features/domain/use_case/get_stadium_map.dart';
 import 'package:eventix_estadio/features/presentation/provider/seat_selection_provider.dart';
 import 'package:eventix_estadio/features/presentation/provider/stadium_map_provider.dart';
+import 'package:eventix_estadio/services/asientos/servicio.service.dart';
 import 'package:get_it/get_it.dart';
 
 final sl = GetIt.instance; // sl = Service Locator
@@ -19,6 +20,7 @@ void init() {
     (sectorId, _) => SeatSelectionProvider(
       getSeatsForSector: sl(),
       getSectorById: sl(), 
+      asientoService: sl(), 
       sectorId: sectorId,
     ),
   );
@@ -27,6 +29,8 @@ void init() {
   sl.registerLazySingleton(() => GetStadiumMap(sl()));
   sl.registerLazySingleton(() => GetSeatsForSector(sl()));
   sl.registerLazySingleton(() => GetSectorById(sl()));
+  sl.registerLazySingleton(() => AsientoService());
+
   
   // Repository
   sl.registerLazySingleton<StadiumMapRepository>(

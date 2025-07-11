@@ -26,7 +26,7 @@ class SeatsPainter extends CustomPainter {
       // restando la esquina superior izquierda del sector original.
       final localCenter = seat.boundingBox.center.translate(-sectorOrigin.dx, -sectorOrigin.dy);
       // Dibujamos el círculo en el canvas. Su tamaño y posición son relativos al lienzo.
-      canvas.drawCircle(localCenter, seat.boundingBox.width / 4, paint);
+      canvas.drawCircle(localCenter, seat.boundingBox.width / 2, paint);
     }
   }
 

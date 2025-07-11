@@ -1,3 +1,4 @@
+import 'package:eventix_estadio/services/asientos/servicio.service.dart';
 import 'package:flutter/material.dart';
 import '../../domain/entities/interactive_polygon.dart';
 import '../../domain/entities/seat.dart';
@@ -12,20 +13,23 @@ class SeatSelectionProvider extends ChangeNotifier {
   final GetSectorById getSectorById;
   final String sectorId;
 
-  SeatSelectionProvider({
-    required this.getSeatsForSector,
-    required this.getSectorById,
-    required this.sectorId,
-  }) {
-    fetchDetails();
-  }
+  final AsientoService _asientoService;
 
   SeatSelectionState _state = SeatSelectionState.loading;
   SeatSelectionState get state => _state;
 
+  SeatSelectionProvider({
+    required this.getSeatsForSector,
+    required AsientoService asientoService,
+    required this.getSectorById,
+    required this.sectorId,
+  }) : _asientoService = asientoService {
+    fetchDetails();
+  }
+
   List<Seat> _seats = [];
   List<Seat> get seats => _seats;
-  
+
   InteractivePolygon? _sector;
   InteractivePolygon? get sector => _sector;
 
@@ -35,12 +39,14 @@ class SeatSelectionProvider extends ChangeNotifier {
   String _errorMessage = '';
   String get errorMessage => _errorMessage;
 
-  final TransformationController transformationController = TransformationController();
-  bool isInitialZoomApplied = false;
+  Rect? _seatsBoundingBox;
+  Rect? get seatsBoundingBox => _seatsBoundingBox;
 
-  void markZoomApplied() {
-    isInitialZoomApplied = true;
-  }
+  final Set<String> _pendingSeatIds = {};
+  Set<String> get pendingSeatIds => _pendingSeatIds;
+
+  final TransformationController transformationController =
+      TransformationController();
 
   @override
   void dispose() {
@@ -66,17 +72,58 @@ class SeatSelectionProvider extends ChangeNotifier {
       },
       (seatsData) {
         _seats = seatsData as List<Seat>;
-        print('✅ Sector "$sectorId": Se encontraron ${_seats.length} asientos.');
+        // Calcula el bounding box que une a todos los asientos
+        if (_seats.isNotEmpty) {
+          _seatsBoundingBox = _seats.first.boundingBox;
+          for (var i = 1; i < _seats.length; i++) {
+            _seatsBoundingBox = _seatsBoundingBox!.expandToInclude(
+              _seats[i].boundingBox,
+            );
+          }
+        }
       },
     );
-    
-    sectorResult.fold(
-      (failure) {
-        _errorMessage += "\n${failure.message}";
-      },
-      (sectorData) => _sector = sectorData as InteractivePolygon?,
-    );
-    
+
+    sectorResult.fold((failure) {
+      _errorMessage += "\n${failure.message}";
+    }, (sectorData) => _sector = sectorData as InteractivePolygon?);
+
+   if (_seats.isEmpty) {
+      _state = SeatSelectionState.loaded;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final statusCheckFutures = _seats.map(
+            (seat) => _asientoService.obtenerDetalleAsiento(seat.customId, sectorId)).toList();
+
+      final statusResponses = await Future.wait(statusCheckFutures);
+
+      final statusMap = {
+        for (var response in statusResponses)
+          if (response.isSuccess && response.hasValue)
+            response.value!.idCustom: response.value!.estado,
+      };
+
+      final updatedSeats = <Seat>[];
+      for (var seat in _seats) {
+        final bool isAvailable =
+            statusMap[seat.customId] ??
+            true; // Si falla la API, asume que está disponible
+        if (!isAvailable) {
+          updatedSeats.add(seat.copyWith(status: SeatStatus.bloqueado));
+        } else {
+          updatedSeats.add(seat);
+        }
+      }
+      _seats = updatedSeats;
+    } catch (e) {
+      _errorMessage += "\nError al verificar estados de asientos: $e";
+      _state = SeatSelectionState.error;
+      notifyListeners();
+      return;
+    }
     _state = _errorMessage.isEmpty ? SeatSelectionState.loaded : SeatSelectionState.error;
     notifyListeners();
   }
@@ -94,11 +141,53 @@ class SeatSelectionProvider extends ChangeNotifier {
       _seats[seatIndex] = seat.copyWith(status: SeatStatus.disponible);
       _selectedSeatIds.remove(seat.customId);
     } else {
-      print('Asiento no disponible: ${seat.customId}, Estado: ${seat.status.name}');
+      print(
+        'Asiento no disponible: ${seat.customId}, Estado: ${seat.status.name}',
+      );
       return;
     }
-    
+
     print('Asientos seleccionados: $_selectedSeatIds');
     notifyListeners();
+  }
+
+  Future<void> checkAndSelectSeat(Seat seat, BuildContext context) async {
+
+    if (seat.status != SeatStatus.disponible && seat.status != SeatStatus.seleccionado) {
+      print("Asiento no disponible para selección: ${seat.customId}");
+      return;
+    }
+    if (_pendingSeatIds.contains(seat.id)) return;
+
+    _pendingSeatIds.add(seat.id);
+    notifyListeners();
+
+    try {
+      final response = await _asientoService.obtenerDetalleAsiento(
+        seat.customId,
+        sectorId,
+      );
+      if (response.isSuccess && response.hasValue) {
+        if (response.value!.estado == true) {
+          // Si está disponible, usamos el ID interno para la lógica de UI.
+          selectSeat(seat.id);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Este asiento ya no está disponible."),
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error al verificar asiento: ${response.msg}"),
+          ),
+        );
+      }
+    } finally {
+      _pendingSeatIds.remove(seat.id);
+      notifyListeners();
+    }
   }
 }
