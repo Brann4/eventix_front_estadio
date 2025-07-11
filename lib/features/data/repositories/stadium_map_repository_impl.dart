@@ -40,12 +40,14 @@ class StadiumMapRepositoryImpl implements StadiumMapRepository {
         final customId = element.getAttribute('data-custom-id');
         final id = element.getAttribute('id');
 
-        if (id != null/* && customId != null && customId.isNotEmpty*/) {
+        if (id != null /* && customId != null && customId.isNotEmpty*/ ) {
           final style = element.getAttribute('style') ?? '';
           final isEnabled = !style.contains('cursor: not-allowed');
           final name = element.getAttribute('data-name') ?? 'Sector';
           final aforo =
               int.tryParse(element.getAttribute('data-aforo') ?? '0') ?? 0;
+          final pathData =
+              element.getAttribute('points') ?? element.getAttribute('d') ?? '';
 
           polygons.add(
             InteractivePolygon(
@@ -56,6 +58,7 @@ class StadiumMapRepositoryImpl implements StadiumMapRepository {
               name: name,
               aforo: aforo,
               isEnabled: isEnabled,
+              pathData: pathData
             ),
           );
         }
@@ -161,6 +164,7 @@ class StadiumMapRepositoryImpl implements StadiumMapRepository {
       final name = element.getAttribute('data-name') ?? 'Sector';
       final aforo =
           int.tryParse(element.getAttribute('data-aforo') ?? '0') ?? 0;
+          final pathData = element.getAttribute('points') ?? element.getAttribute('d') ?? '';
 
       return Right(
         InteractivePolygon(
@@ -171,6 +175,7 @@ class StadiumMapRepositoryImpl implements StadiumMapRepository {
           name: name,
           aforo: aforo,
           isEnabled: isEnabled,
+          pathData: pathData
         ),
       );
     } catch (e) {

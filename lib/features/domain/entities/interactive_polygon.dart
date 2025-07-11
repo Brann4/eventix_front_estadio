@@ -9,6 +9,7 @@ class InteractivePolygon {
   final String name;
   final int aforo;
   final bool isEnabled;
+   final String pathData;
 
   const InteractivePolygon({
     required this.id,
@@ -18,5 +19,6 @@ class InteractivePolygon {
     required this.name,
     required this.aforo,
     required this.isEnabled,
+    required this.pathData
   });
 }

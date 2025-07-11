@@ -8,6 +8,7 @@ import '../../domain/entities/seat.dart';
 import '../../domain/entities/seat_status.dart';
 import '../provider/seat_selection_provider.dart';
 import '../provider/stadium_map_provider.dart';
+import '../widgets/sector_clipper.dart'; // Importa el nuevo clipper
 
 class SeatSelectionPage extends StatefulWidget {
   final String sectorId;
@@ -24,6 +25,15 @@ class SeatSelectionPage extends StatefulWidget {
 }
 
 class _SeatSelectionPageState extends State<SeatSelectionPage> {
+  final Map<SeatStatus, Color> _statusColorMap = {
+    SeatStatus.disponible: const Color(0xFF2196F3),
+    SeatStatus.ocupado: const Color(0xFF757575),
+    SeatStatus.reservado: const Color(0xFF757575),
+    SeatStatus.bloqueado: const Color(0xFF757575),
+    SeatStatus.seleccionado: const Color(0xFF4CAF50),
+    SeatStatus.unknown: Colors.grey,
+  };
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -44,8 +54,6 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
             onPressed: () {
               final ids = provider.selectedSeatIds;
               print("IDs de asientos confirmados: $ids");
-              ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Asientos seleccionados: ${ids.join(', ')}")));
             },
             label: const Text("Confirmar Selección"),
             icon: const Icon(Icons.check),
@@ -57,51 +65,45 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
   }
 
   Widget _buildBody(BuildContext context, SeatSelectionProvider provider) {
-    final originalSvgString = context.read<StadiumMapProvider>().stadiumMap?.svgContent;
-
-    if (provider.state == SeatSelectionState.loading || originalSvgString == null || provider.sector == null) {
+    if (provider.state == SeatSelectionState.loading || provider.sector == null) {
       return const Center(child: CircularProgressIndicator());
     }
     if (provider.state == SeatSelectionState.error) {
       return Center(child: Text(provider.errorMessage));
     }
-
-    final backgroundSvg = _buildSectorBackgroundSvg(originalSvgString, provider.sector!);
+    
+    // El SVG de fondo ahora es aún más simple
+    final backgroundSvg = _buildSectorBackgroundSvg(provider.sector!);
     if (backgroundSvg == null) {
       return const Center(child: Text("No se pudo construir la vista de detalle."));
     }
 
     return Center(
-      child: InteractiveViewer(
-        minScale: 1.0,
-        maxScale: 10.0,
-        child: FittedBox(
-          fit: BoxFit.contain,
-          child: SizedBox.fromSize(
-            size: provider.sector!.boundingBox.size,
-            child: GestureDetector(
-              onTapUp: (details) {
-                // El `localPosition` del toque ya está en el sistema de coordenadas correcto
-                // gracias a que el tamaño del `SizedBox` coincide con el del `viewBox`.
-                final localTapPoint = details.localPosition;
-                
-                for (final seat in provider.seats.reversed) {
-                  final localSeatBox = seat.boundingBox.translate(-provider.sector!.boundingBox.left, -provider.sector!.boundingBox.top);
-                  if (localSeatBox.contains(localTapPoint)) {
-                    context.read<SeatSelectionProvider>().selectSeat(seat.id);
-                    break;
-                  }
-                }
-              },
-              // Usamos un Stack para poner el painter de los asientos sobre el fondo
+      child: Padding(
+        padding: const EdgeInsets.all(6.0),
+        child: InteractiveViewer(
+          minScale: 1.0,
+          maxScale: 10.0,
+          child: FittedBox(
+            fit: BoxFit.fitWidth,
+            child: SizedBox.fromSize(
+              size: provider.sector!.boundingBox.size,
               child: Stack(
                 children: [
+                  // Capa 1: Fondo del sector
                   SvgPicture.string(backgroundSvg),
-                  CustomPaint(
-                    size: provider.sector!.boundingBox.size,
-                    painter: SeatsPainter(
-                      seats: provider.seats,
-                      sectorOrigin: provider.sector!.boundingBox.topLeft,
+
+                  // Capa 2: La máscara con la forma del sector
+                  ClipPath(
+                    clipper: SvgPathClipper(_getRelativePathData(provider.sector!)),
+                    child: Container(
+                      color: Colors.transparent, // El color no importa, solo el clip
+                      // Capa 3: El layout que organiza los asientos
+                      child: Wrap(
+                        spacing: 4.0, // Espacio horizontal entre asientos
+                        runSpacing: 4.0, // Espacio vertical entre filas
+                        children: _buildSeatWidgets(context, provider.seats),
+                      ),
                     ),
                   ),
                 ],
@@ -113,23 +115,17 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
     );
   }
 
- /// Genera un SVG que solo contiene la forma del sector como fondo.
-  String? _buildSectorBackgroundSvg(String originalSvg, InteractivePolygon sector) {
+  /// Genera un SVG que solo contiene la forma del sector, ya normalizada.
+  String? _buildSectorBackgroundSvg(InteractivePolygon sector) {
     try {
-      final originalDoc = XmlDocument.parse(originalSvg);
       final builder = XmlBuilder();
-      final sectorRect = sector.boundingBox;
-
-      // El viewBox se normaliza para que empiece en 0,0
-      builder.element('svg', attributes: {'viewBox': '0 0 ${sectorRect.width} ${sectorRect.height}'}, 
+      builder.element('svg', attributes: {'viewBox': '0 0 ${sector.boundingBox.width} ${sector.boundingBox.height}'}, 
       nest: () {
-          // Usamos un grupo para mover el polígono al nuevo origen 0,0
-          builder.element('g', attributes: {'transform': 'translate(${-sectorRect.left}, ${-sectorRect.top})'}, 
-          nest: () {
-            final sectorNode = originalDoc.findAllElements('*').firstWhere((el) => el.getAttribute('id') == sector.id).copy() as XmlElement;
-            sectorNode.setAttribute('fill-opacity', '0.5');
-            builder.xml(sectorNode.toXmlString());
-          });
+        builder.element('path', attributes: {
+          'd': _getRelativePathData(sector),
+          'fill': '#CCCCCC', // Un color de fondo base
+          'fill-opacity': '0.5'
+        });
       });
       return builder.buildDocument().toXmlString();
     } catch (e) {
@@ -137,41 +133,42 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
       return null;
     }
   }
-}
 
-// --- NUEVO WIDGET PAINTER ---
-// Este painter es mucho más simple y se encarga solo de dibujar los círculos.
-class SeatsPainter extends CustomPainter {
-  final List<Seat> seats;
-  final Offset sectorOrigin;
+  /// Toma el pathData global y lo convierte a coordenadas locales (empezando en 0,0)
+  String _getRelativePathData(InteractivePolygon sector) {
+    final origin = sector.boundingBox.topLeft;
+    final regExp = RegExp(r'[-]?\d*\.?\d+');
+    final matches = regExp.allMatches(sector.pathData);
+    final coords = matches.map((m) => double.parse(m.group(0)!)).toList();
 
-  SeatsPainter({required this.seats, required this.sectorOrigin});
-
-  final Map<SeatStatus, Paint> _statusPaintMap = {
-    SeatStatus.disponible: Paint()..color = const Color(0xFF2196F3),
-    SeatStatus.ocupado: Paint()..color = const Color(0xFF757575),
-    SeatStatus.reservado: Paint()..color = const Color(0xFF757575),
-    SeatStatus.bloqueado: Paint()..color = const Color(0xFF757575),
-    SeatStatus.seleccionado: Paint()..color = const Color(0xFF4CAF50),
-    SeatStatus.unknown: Paint()..color = Colors.grey,
-  };
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (final seat in seats) {
-      final paint = _statusPaintMap[seat.status] ?? _statusPaintMap[SeatStatus.unknown]!;
-      
-      // Calculamos la posición local del asiento dentro del canvas
-      final localCenter = seat.boundingBox.center.translate(-sectorOrigin.dx, -sectorOrigin.dy);
-      
-      // Dibujamos el círculo
-      canvas.drawCircle(localCenter, seat.boundingBox.width / 2, paint);
+    String relativePath = '';
+    if (coords.isNotEmpty) {
+      relativePath += 'M ${coords[0] - origin.dx} ${coords[1] - origin.dy} ';
+      for (int i = 2; i < coords.length; i += 2) {
+        relativePath += 'L ${coords[i] - origin.dx} ${coords[i + 1] - origin.dy} ';
+      }
     }
+    return relativePath + 'Z';
   }
 
-  @override
-  bool shouldRepaint(covariant SeatsPainter oldDelegate) {
-    // Redibuja solo si la lista de asientos (y sus estados) cambia.
-    return oldDelegate.seats != seats;
+  /// Genera una lista de Widgets para cada asiento
+  List<Widget> _buildSeatWidgets(BuildContext context, List<Seat> seats) {
+    return seats.map((seat) {
+      return GestureDetector(
+        onTap: () => context.read<SeatSelectionProvider>().selectSeat(seat.id),
+        child: Tooltip(
+          message: "Asiento: ${seat.customId}",
+          child: Container(
+            // El tamaño ahora es fijo y agradable para el dedo
+            width: 20, 
+            height: 20,
+            decoration: BoxDecoration(
+              color: _statusColorMap[seat.status],
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      );
+    }).toList();
   }
 }
