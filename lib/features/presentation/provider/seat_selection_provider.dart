@@ -40,6 +40,11 @@ class SeatSelectionProvider extends ChangeNotifier {
   // Expone el controlador para que la vista lo use para el zoom y el paneo.
   final TransformationController transformationController =
       TransformationController();
+  bool isInitialZoomApplied = false;
+
+  void markZoomApplied() {
+    isInitialZoomApplied = true;
+  }
 
   @override
   void dispose() {
@@ -61,21 +66,13 @@ class SeatSelectionProvider extends ChangeNotifier {
     final sectorResult = results[1];
 
     seatsResult.fold(
-      (failure) {
-        _errorMessage = failure.message;
-        print('🔴 Error al buscar asientos: $_errorMessage');
-      },
-      (seatsData) {
-        _seats = seatsData as List<Seat>;
-        print(
-          '✅ Sector "$sectorId": Se encontraron ${_seats.length} asientos.',
-        );
-        for (var seat in _seats) {
-          print(
-            '   -> Asiento detectado: ID: ${seat.id}, CustomID: ${seat.customId}, Estado: ${seat.status.name}',
-          );
-        }
-      },
+      (failure) => _errorMessage = failure.message,
+      (seatsData) => _seats = seatsData as List<Seat>,
+    );
+
+    sectorResult.fold(
+      (failure) => _errorMessage += "\n${failure.message}",
+      (sectorData) => _sector = sectorData as InteractivePolygon?,
     );
 
     sectorResult.fold((failure) {
