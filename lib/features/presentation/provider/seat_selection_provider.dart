@@ -123,12 +123,18 @@ class SeatSelectionProvider extends ChangeNotifier {
   }
 
   Future<void> checkAndSelectSeat(Seat seat, BuildContext context) async {
-
+    if (seat.status == SeatStatus.seleccionado) {
+        selectSeat(seat.id); 
+        return; 
+    }
+    
     if (seat.status != SeatStatus.disponible && seat.status != SeatStatus.seleccionado) {
       print("Asiento no disponible para selección: ${seat.customId}");
       return;
     }
-    if (_pendingSeatIds.contains(seat.id)) return;
+    if (_pendingSeatIds.contains(seat.id)) {
+      print("Asiento ya seleccionado");
+    };
 
     _pendingSeatIds.add(seat.id);
     notifyListeners();

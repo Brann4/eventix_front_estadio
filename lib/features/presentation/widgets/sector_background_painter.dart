@@ -9,17 +9,11 @@ class SectorBackgroundPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Definimos el color y estilo del fondo
     final backgroundPaint = Paint()
       ..color = Colors.grey.withValues(alpha: .3) // Un color base para el fondo
       ..style = PaintingStyle.fill;
 
-    // ----- LÓGICA INTELIGENTE BASADA EN SHAPETYPE -----
-
     if (sector.shapeType == 'rect') {
-      // --- CASO 1: Es un rectángulo ---
-      // Esta es la forma más directa y segura de dibujarlo.
-      
       // Calculamos la posición y tamaño del rectángulo relativo a nuestro lienzo.
       final relativeRect = Rect.fromLTWH(
         sector.boundingBox.left - referenceBox.left,
@@ -31,18 +25,13 @@ class SectorBackgroundPainter extends CustomPainter {
       canvas.drawRect(relativeRect, backgroundPaint);
 
     } else if (sector.shapeType == 'polygon' && sector.pathData.isNotEmpty) {
-      // --- CASO 2: Es un polígono y tenemos sus puntos en pathData ---
-      
+
       // Construimos un objeto Path de Flutter a partir del string de puntos.
       final path = _buildPathFromPointsString(sector.pathData);
-      
       canvas.save();
-
       canvas.translate(-referenceBox.left, -referenceBox.top);
-      
       // Dibujamos el path en el canvas ya trasladado.
       canvas.drawPath(path, backgroundPaint);
-      
       // Restauramos el canvas a su estado original para no afectar a otros painters.
       canvas.restore();
     }
