@@ -94,36 +94,7 @@ class SeatSelectionProvider extends ChangeNotifier {
       return;
     }
 
-    try {
-      final statusCheckFutures = _seats.map(
-            (seat) => _asientoService.obtenerDetalleAsiento(seat.customId, sectorId)).toList();
 
-      final statusResponses = await Future.wait(statusCheckFutures);
-
-      final statusMap = {
-        for (var response in statusResponses)
-          if (response.isSuccess && response.hasValue)
-            response.value!.idCustom: response.value!.estado,
-      };
-
-      final updatedSeats = <Seat>[];
-      for (var seat in _seats) {
-        final bool isAvailable =
-            statusMap[seat.customId] ??
-            true; // Si falla la API, asume que está disponible
-        if (!isAvailable) {
-          updatedSeats.add(seat.copyWith(status: SeatStatus.bloqueado));
-        } else {
-          updatedSeats.add(seat);
-        }
-      }
-      _seats = updatedSeats;
-    } catch (e) {
-      _errorMessage += "\nError al verificar estados de asientos: $e";
-      _state = SeatSelectionState.error;
-      notifyListeners();
-      return;
-    }
     _state = _errorMessage.isEmpty ? SeatSelectionState.loaded : SeatSelectionState.error;
     notifyListeners();
   }
@@ -161,6 +132,7 @@ class SeatSelectionProvider extends ChangeNotifier {
 
     _pendingSeatIds.add(seat.id);
     notifyListeners();
+    
 
     try {
       final response = await _asientoService.obtenerDetalleAsiento(
@@ -186,6 +158,7 @@ class SeatSelectionProvider extends ChangeNotifier {
         );
       }
     } finally {
+      print("No se pudoi hacer la consulta");
       _pendingSeatIds.remove(seat.id);
       notifyListeners();
     }

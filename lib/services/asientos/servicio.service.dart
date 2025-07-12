@@ -6,7 +6,7 @@ import 'package:eventix_estadio/utils/api_response.dart';
 import 'package:http/http.dart' as http;
 
 class AsientoService {
-  final String baseUrl = '${ApiConstants.baseUrl}/api/gestor/Asiento';
+  final String baseUrl = '${ApiConstants.baseUrl}/api/gestor/Plano';
   final http.Client client;
 
   AsientoService({http.Client? client}) : client = client ?? http.Client();

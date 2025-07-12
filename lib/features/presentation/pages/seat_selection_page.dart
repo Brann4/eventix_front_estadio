@@ -142,9 +142,9 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
                   for (final entry in seatLayoutData.entries) {
                     if (entry.key.contains(tapPosition)) {
                        
-                      final seat = entry.value; 
-                      final seatId = entry.value.id;
+                      //final seatId = entry.value.id;
                       //provider.selectSeat(seatId);
+                      final seat = entry.value; 
                       provider.checkAndSelectSeat(seat, context);
                       break; // Se encontró el asiento, no es necesario seguir buscando.
                     }
