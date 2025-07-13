@@ -27,6 +27,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/estadio.svg
+    - assets/estadio_2.svg
     - .env.development
 
 

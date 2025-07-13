@@ -137,22 +137,20 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
 
                 GestureDetector(
                   onTapUp: (details) {
-                  final tapPosition = details.localPosition;
-                  
-                  for (final entry in seatLayoutData.entries) {
-                    if (entry.key.contains(tapPosition)) {
-                       
-                      final seat = entry.value; 
-                      //provider.selectSeat(seatId);
-                      //final seatId = entry.value.id;
-                      provider.checkAndSelectSeat(seat, context);
-                      break; // Se encontró el asiento, no es necesario seguir buscando.
+                    final tapPosition = details.localPosition;
+
+                    for (final entry in seatLayoutData.entries) {
+                      if (entry.key.contains(tapPosition)) {
+                        final seat = entry.value;
+                        //provider.selectSeat(seatId);
+                        //final seatId = entry.value.id;
+                        provider.checkAndSelectSeat(seat, context);
+                        break;
+                      }
                     }
-                  }
-                },
+                  },
                   child: CustomPaint(
                     size: referenceBox.size,
-                    // 3. El Painter recibe el mapa ya calculado. Solo se dedica a dibujar.
                     painter: SeatsPainter(seatLayout: seatLayoutData),
                   ),
                 ),

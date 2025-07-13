@@ -10,7 +10,7 @@ class SectorBackgroundPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final backgroundPaint = Paint()
-      ..color = Colors.grey.withValues(alpha: .3) // Un color base para el fondo
+      ..color = Colors.blueGrey // Un color base para el fondo
       ..style = PaintingStyle.fill;
 
     if (sector.shapeType == 'rect') {
