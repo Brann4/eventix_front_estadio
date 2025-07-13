@@ -4,7 +4,6 @@ import 'package:dartz/dartz.dart';
 import '../../domain/entities/interactive_polygon.dart';
 import '../../domain/entities/stadium_map.dart';
 
-
 enum StadiumMapState { initial, loading, loaded, error }
 
 class StadiumMapProvider extends ChangeNotifier {
@@ -26,13 +25,13 @@ class StadiumMapProvider extends ChangeNotifier {
 
   final TransformationController transformationController = TransformationController();
 
-  Future<void> fetchStadiumMap() async {
+  Future<void> loadMap(String svgPath) async {
     _state = StadiumMapState.loading;
     notifyListeners();
 
-    final failureOrStadiumMap = await getStadiumMap();
+    final result = await getStadiumMap(svgPath);
 
-    failureOrStadiumMap.fold(
+    result.fold(
       (failure) {
         _errorMessage = failure.message;
         _state = StadiumMapState.error;

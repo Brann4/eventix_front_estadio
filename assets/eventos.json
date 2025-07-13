@@ -1,0 +1,20 @@
+[
+  {
+    "id": "evt001",
+    "nombre": "Concierto de Rock Clásico",
+    "artista": "Leyendas del Rock",
+    "fecha": "2025-10-15",
+    "lugar": "Estadio Nacional",
+    "imagenUrl": "https://i.imgur.com/Tuu52iM.png",
+    "svgPath": "assets/estadio.svg"
+  },
+  {
+    "id": "evt002",
+    "nombre": "Final del Torneo",
+    "artista": "Fútbol Profesional",
+    "fecha": "2025-11-20",
+    "lugar": "Estadio Monumental",
+    "imagenUrl": "https://i.imgur.com/O15rN2b.png",
+    "svgPath": "assets/estadio_2.svg"
+  }
+]

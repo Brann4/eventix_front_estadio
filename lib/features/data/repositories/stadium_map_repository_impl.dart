@@ -14,15 +14,34 @@ import '../datasources/stadium_map_local_data_source.dart';
 class StadiumMapRepositoryImpl implements StadiumMapRepository {
   final StadiumMapLocalDataSource localDataSource;
   String? _cachedSvgContent;
+  String? _cachedSvgPath;
 
   StadiumMapRepositoryImpl({required this.localDataSource});
 
   @override
-  Future<Either<Failure, StadiumMap>> getStadiumMap() async {
+  Future<Either<Failure, StadiumMap>> getStadiumMap(String svgPath) async {
     try {
-      final svgString = await localDataSource.getStadiumMapSvgContent();
+      final svgString = await localDataSource.getStadiumMapSvgContent(svgPath);
       _cachedSvgContent = svgString;
+      _cachedSvgPath = svgPath; // Guarda en caché la ruta también
+
       final document = XmlDocument.parse(svgString);
+      // --- NUEVO: Extraer el viewBox ---
+      final svgElement = document.rootElement;
+      final viewBoxString = svgElement.getAttribute('viewBox');
+      if (viewBoxString == null) {
+        throw Exception(
+          'El atributo "viewBox" no fue encontrado en el elemento <svg>',
+        );
+      }
+      final viewBoxValues = viewBoxString.split(' ').map(double.parse).toList();
+      final viewBox = Rect.fromLTWH(
+        viewBoxValues[0],
+        viewBoxValues[1],
+        viewBoxValues[2],
+        viewBoxValues[3],
+      );
+      // --- FIN DEL NUEVO CÓDIGO ---
 
       final mainView = document
           .findAllElements('g')
@@ -58,13 +77,15 @@ class StadiumMapRepositoryImpl implements StadiumMapRepository {
               name: name,
               aforo: aforo,
               isEnabled: isEnabled,
-              pathData: pathData
+              pathData: pathData,
             ),
           );
         }
       }
 
-      return Right(StadiumMap(svgContent: svgString, polygons: polygons));
+      return Right(
+        StadiumMap(svgContent: svgString, polygons: polygons, viewBox: viewBox),
+      );
     } catch (e) {
       return Left(DataSourceFailure('Error al parsear el SVG: $e'));
     }
@@ -75,7 +96,7 @@ class StadiumMapRepositoryImpl implements StadiumMapRepository {
     String sectorId,
   ) async {
     if (_cachedSvgContent == null) {
-      final mapResult = await getStadiumMap();
+      final mapResult = await getStadiumMap(_cachedSvgPath!);
       if (mapResult.isLeft()) {
         return Left(DataSourceFailure('El SVG no se ha cargado todavía.'));
       }
@@ -164,7 +185,8 @@ class StadiumMapRepositoryImpl implements StadiumMapRepository {
       final name = element.getAttribute('data-name') ?? 'Sector';
       final aforo =
           int.tryParse(element.getAttribute('data-aforo') ?? '0') ?? 0;
-          final pathData = element.getAttribute('points') ?? element.getAttribute('d') ?? '';
+      final pathData =
+          element.getAttribute('points') ?? element.getAttribute('d') ?? '';
 
       return Right(
         InteractivePolygon(
@@ -175,7 +197,7 @@ class StadiumMapRepositoryImpl implements StadiumMapRepository {
           name: name,
           aforo: aforo,
           isEnabled: isEnabled,
-          pathData: pathData
+          pathData: pathData,
         ),
       );
     } catch (e) {

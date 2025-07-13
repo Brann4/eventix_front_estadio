@@ -1,13 +1,14 @@
-import 'package:flutter/foundation.dart';
-import 'interactive_polygon.dart';
+import 'package:flutter/material.dart';
+import 'interactive_polygon.dart'; // Make sure to import your polygon entity
 
-@immutable
 class StadiumMap {
   final String svgContent;
   final List<InteractivePolygon> polygons;
+  final Rect viewBox; // <-- ADD THIS
 
-  const StadiumMap({
+  StadiumMap({
     required this.svgContent,
     required this.polygons,
+    required this.viewBox, // <-- ADD THIS
   });
 }

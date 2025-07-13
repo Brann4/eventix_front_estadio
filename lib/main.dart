@@ -1,3 +1,4 @@
+import 'package:eventix_estadio/features/presentation/pages/1_eventos_page.dart';
 import 'package:eventix_estadio/features/presentation/pages/stadium_map_page.dart';
 import 'package:eventix_estadio/features/presentation/provider/stadium_map_provider.dart';
 import 'package:flutter/material.dart';
@@ -20,19 +21,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      // Obtiene la instancia del provider desde el service locator
-      create: (context) => di.sl<StadiumMapProvider>(),
-      child: MaterialApp(
-        title: 'Visor de Estadio',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          useMaterial3: true,
-          scaffoldBackgroundColor: Colors.grey[200],
-        ),
-        debugShowCheckedModeBanner: false,
-        home: const StadiumMapPage(),
+    return MaterialApp(
+      title: 'Visor de Estadios',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
       ),
+      home: const EventosPage(),
     );
   }
 }

@@ -8,7 +8,7 @@ class GetStadiumMap {
 
   GetStadiumMap(this.repository);
 
-  Future<Either<Failure, StadiumMap>> call() {
-    return repository.getStadiumMap();
+  Future<Either<Failure, StadiumMap>> call(String svgPath) {
+    return repository.getStadiumMap(svgPath);
   }
 }

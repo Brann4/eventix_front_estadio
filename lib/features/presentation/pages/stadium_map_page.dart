@@ -1,3 +1,4 @@
+import 'package:eventix_estadio/features/domain/entities/eventos.dart';
 import 'package:eventix_estadio/features/presentation/pages/seat_selection_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -6,7 +7,9 @@ import '../provider/stadium_map_provider.dart';
 import '../widgets/stadium_overlay_painter.dart';
 
 class StadiumMapPage extends StatefulWidget {
-  const StadiumMapPage({super.key});
+  final Evento event;
+
+  const StadiumMapPage({super.key, required this.event});
 
   @override
   State<StadiumMapPage> createState() => _StadiumMapPageState();
@@ -17,7 +20,7 @@ class _StadiumMapPageState extends State<StadiumMapPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<StadiumMapProvider>().fetchStadiumMap();
+      context.read<StadiumMapProvider>().loadMap(widget.event.svgPath);
     });
   }
 
