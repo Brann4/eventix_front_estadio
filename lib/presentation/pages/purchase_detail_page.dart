@@ -297,7 +297,6 @@ class _PurchaseDetailViewState extends State<_PurchaseDetailView> {
             onPressed: !hasTickets
                 ? null
                 : () async {
-                    // --- SECCIÓN CORREGIDA ---
                     final firstSelectedType = state.ticketQuantities.entries
                         .firstWhereOrNull((e) => e.value > 0);
 
@@ -312,11 +311,16 @@ class _PurchaseDetailViewState extends State<_PurchaseDetailView> {
                     );
 
                     if (sectorToNavigate != null) {
+                      final quantity = firstSelectedType.value;
                       // 1. Navegamos y ESPERAMOS a que el usuario regrese de esta pantalla.
                       await context.pushNamed(
                         'sector-detail',
                         pathParameters: {'eventId': widget.event.id},
-                        extra: sectorToNavigate,
+                        extra: {
+                          'sector': sectorToNavigate,
+                          'quantity':
+                              quantity, // <-- AÑADIMOS LA CANTIDAD AL PAYLOAD
+                        },
                       );
 
                       // 2. Cuando el usuario regresa, disparamos el evento para reiniciar el estado.

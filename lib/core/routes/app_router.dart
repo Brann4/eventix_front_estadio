@@ -36,8 +36,10 @@ class AppRouter {
                     name: 'sector-detail',
                     builder: (context, state) {
                       final eventId = state.pathParameters['eventId']!;
-                      final sector = state.extra as Sector;
-                      return SectorDetailPage(eventId: eventId, sector: sector);
+                      final args = state.extra as Map<String, dynamic>;
+                      final sector = args['sector'] as Sector;
+                      final quantity = args['quantity'] as int;
+                      return SectorDetailPage(eventId: eventId, sector: sector, quantity: quantity);
                     },
                   ),
                 ],

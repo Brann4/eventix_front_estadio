@@ -3,6 +3,10 @@ part of 'sector_detail_bloc.dart';
 enum SectorDetailStatus { initial, loading, loaded, error }
 
 class SectorDetailState extends Equatable {
+  final int maxSelectionCount;
+  final bool limitReached;
+
+
   final SectorDetailStatus status;
   final Sector? parentSector;
   final List<Seat> seats;
@@ -17,6 +21,8 @@ class SectorDetailState extends Equatable {
     this.selectedSeatIds = const {},
     this.viewBox,
     this.errorMessage = '',
+     this.maxSelectionCount = 0, 
+    this.limitReached = false,
   });
 
   SectorDetailState copyWith({
@@ -26,6 +32,8 @@ class SectorDetailState extends Equatable {
     Set<String>? selectedSeatIds,
     Rect? viewBox,
     String? errorMessage,
+    int? maxSelectionCount,
+    bool? limitReached,
   }) {
     return SectorDetailState(
       status: status ?? this.status,
@@ -34,9 +42,11 @@ class SectorDetailState extends Equatable {
       selectedSeatIds: selectedSeatIds ?? this.selectedSeatIds,
       viewBox: viewBox ?? this.viewBox,
       errorMessage: errorMessage ?? this.errorMessage,
+      maxSelectionCount: maxSelectionCount ?? this.maxSelectionCount,
+      limitReached: limitReached ?? false, 
     );
   }
 
   @override
-  List<Object?> get props => [status, parentSector, seats, selectedSeatIds, viewBox, errorMessage];
+  List<Object?> get props => [status, parentSector, seats, selectedSeatIds, viewBox, errorMessage, maxSelectionCount, limitReached];
 }

@@ -17,7 +17,8 @@ class SectorDetailBloc extends Bloc<SectorDetailEvent, SectorDetailState> {
   SectorDetailBloc({
     required this.getSvgData,
     required Sector parentSector,
-  }) : super(SectorDetailState(parentSector: parentSector)) {
+    required int maxSelectionCount
+  }) : super(SectorDetailState(parentSector: parentSector ,maxSelectionCount: maxSelectionCount)) {
     on<LoadSeats>(_onLoadSeats);
     on<SeatTapped>(_onSeatTapped);
   }
@@ -44,11 +45,20 @@ class SectorDetailBloc extends Bloc<SectorDetailEvent, SectorDetailState> {
 
   void _onSeatTapped(SeatTapped event, Emitter<SectorDetailState> emit) {
     final newSelectedIds = Set<String>.from(state.selectedSeatIds);
-    if (newSelectedIds.contains(event.seatId)) {
-      newSelectedIds.remove(event.seatId); // Deseleccionar
+    final seatIsAlreadySelected = newSelectedIds.contains(event.seatId);
+
+    if (seatIsAlreadySelected) {
+      newSelectedIds.remove(event.seatId); // Siempre permitir deseleccionar
+      emit(state.copyWith(selectedSeatIds: newSelectedIds));
     } else {
-      newSelectedIds.add(event.seatId); // Seleccionar
+       if (newSelectedIds.length < state.maxSelectionCount) {
+        newSelectedIds.add(event.seatId);
+        emit(state.copyWith(selectedSeatIds: newSelectedIds));
+      } else {
+        // Si se alcanzó el límite, emitimos un estado para notificar a la UI
+        emit(state.copyWith(limitReached: true));
+      }
     }
-    emit(state.copyWith(selectedSeatIds: newSelectedIds));
+    //emit(state.copyWith(selectedSeatIds: newSelectedIds));
   }
 }

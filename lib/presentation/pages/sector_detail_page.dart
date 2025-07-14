@@ -17,11 +17,13 @@ import '../widgets/purchase/seat_painter.dart';
 class SectorDetailPage extends StatelessWidget {
   final String eventId;
   final Sector sector;
+  final int quantity;
 
   const SectorDetailPage({
     Key? key,
     required this.eventId,
     required this.sector,
+    required this.quantity,
   }) : super(key: key);
 
   @override
@@ -35,13 +37,16 @@ class SectorDetailPage extends StatelessWidget {
     return BlocProvider(
       create: (context) {
         final SvgDataSource svgDataSource = SvgDataSourceImpl();
-        final SvgRepositoryImpl svgRepository = SvgRepositoryImpl(dataSource: svgDataSource);
+        final SvgRepositoryImpl svgRepository = SvgRepositoryImpl(
+          dataSource: svgDataSource,
+        );
         final GetSvgData getSvgDataUseCase = GetSvgData(svgRepository);
-        
+
         // Creamos el BLoC y disparamos el evento para cargar los asientos.
         return SectorDetailBloc(
           getSvgData: getSvgDataUseCase,
           parentSector: sector,
+          maxSelectionCount: quantity,
         )..add(LoadSeats(svgPath: event.svgPath, sectorId: sector.id));
       },
       child: _SectorDetailView(
@@ -56,7 +61,7 @@ class SectorDetailPage extends StatelessWidget {
 class _SectorDetailView extends StatefulWidget {
   final String sectorName;
   final String eventId;
-  
+
   const _SectorDetailView({required this.sectorName, required this.eventId});
 
   @override
@@ -65,56 +70,77 @@ class _SectorDetailView extends StatefulWidget {
 
 class _SectorDetailViewState extends State<_SectorDetailView> {
   SeatPainter? _painter;
-  final TransformationController _transformationController = TransformationController();
+  final TransformationController _transformationController =
+      TransformationController();
 
   @override
   Widget build(BuildContext context) {
     // El resto del código de la UI no necesita cambios.
     final parentSector = context.read<SectorDetailBloc>().state.parentSector!;
     return Scaffold(
-      appBar: AppBar(title: Text('Sector: ${widget.sectorName}')),
-      body: BlocConsumer<SectorDetailBloc, SectorDetailState>(
-        listener: (context, state) {
-          if (state.status == SectorDetailStatus.loaded) {
-            _painter = SeatPainter(
-              sector: parentSector,
-              seats: state.seats,
-              selectedSeatIds: state.selectedSeatIds,
-            );
-          }
-        },
-        builder: (context, state) {
-          if (state.status == SectorDetailStatus.loading || state.status == SectorDetailStatus.initial) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (state.status == SectorDetailStatus.error) {
-            return Center(child: Text('Error: ${state.errorMessage}'));
-          }
-          if (state.status == SectorDetailStatus.loaded) {
-            return InteractiveViewer(
-              transformationController: _transformationController,
-              boundaryMargin: const EdgeInsets.all(20.0),
-              minScale: 1.0,
-              maxScale: 5.0,
-              child: GestureDetector(
-                onTapDown: (details) {
-                  if (_painter == null) return;
-                  final localPosition = _transformationController.toScene(details.localPosition);
-                  final seat = _painter!.getSeatFromOffset(localPosition);
-                  if (seat != null) {
-                    context.read<SectorDetailBloc>().add(SeatTapped(seat.id));
-                  }
-                },
-                child: CustomPaint(
-                  painter: _painter,
-                  size: Size.infinite,
-                ),
-              ),
-            );
-          }
-          return const SizedBox.shrink();
-        },
+      appBar: AppBar(
+        title: Text(
+          'Sector: ${widget.sectorName} (Máx: ${context.watch<SectorDetailBloc>().state.maxSelectionCount})',
+        ),
       ),
+
+      body: BlocListener<SectorDetailBloc, SectorDetailState>(
+        listenWhen: (previous, current) =>
+            current.limitReached && !previous.limitReached,
+        listener: (context, state) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Límite de ${state.maxSelectionCount} asientos alcanzado.',
+              ),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        },
+        child: BlocConsumer<SectorDetailBloc, SectorDetailState>(
+          listener: (context, state) {
+            if (state.status == SectorDetailStatus.loaded) {
+              _painter = SeatPainter(
+                sector: parentSector,
+                seats: state.seats,
+                selectedSeatIds: state.selectedSeatIds,
+              );
+            }
+          },
+          builder: (context, state) {
+            if (state.status == SectorDetailStatus.loading ||
+                state.status == SectorDetailStatus.initial) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (state.status == SectorDetailStatus.error) {
+              return Center(child: Text('Error: ${state.errorMessage}'));
+            }
+            if (state.status == SectorDetailStatus.loaded) {
+              return InteractiveViewer(
+                transformationController: _transformationController,
+                boundaryMargin: const EdgeInsets.all(20.0),
+                minScale: 1.0,
+                maxScale: 5.0,
+                child: GestureDetector(
+                  onTapDown: (details) {
+                    if (_painter == null) return;
+                    final localPosition = _transformationController.toScene(
+                      details.localPosition,
+                    );
+                    final seat = _painter!.getSeatFromOffset(localPosition);
+                    if (seat != null) {
+                      context.read<SectorDetailBloc>().add(SeatTapped(seat.id));
+                    }
+                  },
+                  child: CustomPaint(painter: _painter, size: Size.infinite),
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+
       bottomNavigationBar: _buildConfirmSelectionBar(context, widget.eventId),
     );
   }
@@ -124,10 +150,18 @@ class _SectorDetailViewState extends State<_SectorDetailView> {
       builder: (context, state) {
         final selectedCount = state.selectedSeatIds.length;
         return Container(
-          padding: const EdgeInsets.all(16.0).copyWith(bottom: MediaQuery.of(context).padding.bottom + 16),
+          padding: const EdgeInsets.all(
+            16.0,
+          ).copyWith(bottom: MediaQuery.of(context).padding.bottom + 16),
           decoration: BoxDecoration(
             color: Colors.white,
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, -5))],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, -5),
+              ),
+            ],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -149,7 +183,12 @@ class _SectorDetailViewState extends State<_SectorDetailView> {
                               'Sector ID: ${state.parentSector!.id}\n'
                               'Asientos: ${selectedSeats.join(', ')}',
                             ),
-                            actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: const Text('OK'),
+                              ),
+                            ],
                           ),
                         );
                       }
