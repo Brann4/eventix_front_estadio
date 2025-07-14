@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'dart:ui' as ui; // Necesario para la extensión de getBounds
+import 'dart:ui' as ui;
 
 import '../../data/datasources/svg_data_source.dart';
 import '../../data/repositories/svg_repository_impl.dart';
@@ -8,31 +8,37 @@ import '../../domain/entities/event.dart';
 import '../../domain/entities/seat.dart';
 import '../../domain/entities/sector.dart';
 import '../../domain/usecases/get_svg_data.dart';
+import '../blocs/event_list/event_list_bloc.dart';
+import '../blocs/event_list/event_list_state.dart';
 import '../blocs/sector_detail/sector_detail_bloc.dart';
 import '../widgets/purchase/seat_painter.dart';
 
-// El widget principal que recibe los parámetros de la ruta
+// El widget principal ahora recibe eventId, no el objeto Event completo.
 class SectorDetailPage extends StatelessWidget {
-  final Event event;
+  final String eventId;
   final Sector sector;
 
   const SectorDetailPage({
     Key? key,
-    required this.event,
+    required this.eventId,
     required this.sector,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // La página provee su propio BLoC para estar autocontenida y evitar errores de contexto
+    // Buscamos el objeto Event completo desde el estado global del EventListBloc.
+    final event = (context.read<EventListBloc>().state as EventListLoaded)
+        .events
+        .firstWhere((e) => e.id == eventId);
+
+    // La página provee su propio BLoC para estar autocontenida.
     return BlocProvider(
       create: (context) {
-        // Se crean las dependencias necesarias para este BLoC
         final SvgDataSource svgDataSource = SvgDataSourceImpl();
         final SvgRepositoryImpl svgRepository = SvgRepositoryImpl(dataSource: svgDataSource);
         final GetSvgData getSvgDataUseCase = GetSvgData(svgRepository);
         
-        // Se crea el BLoC, se le pasan sus dependencias y se dispara el evento inicial
+        // Creamos el BLoC y disparamos el evento para cargar los asientos.
         return SectorDetailBloc(
           getSvgData: getSvgDataUseCase,
           parentSector: sector,
@@ -46,7 +52,7 @@ class SectorDetailPage extends StatelessWidget {
   }
 }
 
-// Widget interno que maneja el estado de la UI para poder usar TransformationController
+// Widget interno que maneja el estado de la UI (sin cambios).
 class _SectorDetailView extends StatefulWidget {
   final String sectorName;
   final String eventId;
@@ -63,13 +69,15 @@ class _SectorDetailViewState extends State<_SectorDetailView> {
 
   @override
   Widget build(BuildContext context) {
+    // El resto del código de la UI no necesita cambios.
+    final parentSector = context.read<SectorDetailBloc>().state.parentSector!;
     return Scaffold(
       appBar: AppBar(title: Text('Sector: ${widget.sectorName}')),
       body: BlocConsumer<SectorDetailBloc, SectorDetailState>(
         listener: (context, state) {
           if (state.status == SectorDetailStatus.loaded) {
             _painter = SeatPainter(
-              sector: state.parentSector!,
+              sector: parentSector,
               seats: state.seats,
               selectedSeatIds: state.selectedSeatIds,
             );
@@ -83,16 +91,14 @@ class _SectorDetailViewState extends State<_SectorDetailView> {
             return Center(child: Text('Error: ${state.errorMessage}'));
           }
           if (state.status == SectorDetailStatus.loaded) {
-            // Usamos InteractiveViewer para permitir zoom y desplazamiento
             return InteractiveViewer(
               transformationController: _transformationController,
               boundaryMargin: const EdgeInsets.all(20.0),
               minScale: 1.0,
-              maxScale: 5.0, // Aumentamos el zoom máximo
+              maxScale: 5.0,
               child: GestureDetector(
                 onTapDown: (details) {
                   if (_painter == null) return;
-                  // Convertimos la coordenada del tap a la coordenada de la escena (considerando el zoom/pan)
                   final localPosition = _transformationController.toScene(details.localPosition);
                   final seat = _painter!.getSeatFromOffset(localPosition);
                   if (seat != null) {
@@ -133,7 +139,6 @@ class _SectorDetailViewState extends State<_SectorDetailView> {
               ElevatedButton(
                 onPressed: selectedCount > 0
                     ? () {
-                        // Lógica final: mostrar el diálogo con el resumen de la compra
                         final selectedSeats = state.selectedSeatIds.toList();
                         showDialog(
                           context: context,
@@ -158,3 +163,18 @@ class _SectorDetailViewState extends State<_SectorDetailView> {
     );
   }
 }
+/*
+// Extensión para calcular los límites (no necesita cambios)
+extension on List<Point> {
+  ui.Rect getBounds() {
+    if (isEmpty) return ui.Rect.zero;
+    double minX = first.x, maxX = first.x, minY = first.y, maxY = first.y;
+    for (var point in this) {
+      if (point.x < minX) minX = point.x;
+      if (point.x > maxX) maxX = point.x;
+      if (point.y < minY) minY = point.y;
+      if (point.y > maxY) maxY = point.y;
+    }
+    return ui.Rect.fromLTRB(minX, minY, maxX, maxY);
+  }
+}*/

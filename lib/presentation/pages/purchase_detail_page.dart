@@ -1,3 +1,5 @@
+import 'package:eventix_estadio/presentation/blocs/event_list/event_list_bloc.dart';
+import 'package:eventix_estadio/presentation/blocs/event_list/event_list_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -12,19 +14,23 @@ import '../blocs/purchase/purchase_detail_bloc.dart';
 import '../widgets/purchase/stadium_painter.dart';
 
 class PurchaseDetailPage extends StatelessWidget {
-  final Event event;
-  const PurchaseDetailPage({Key? key, required this.event}) : super(key: key);
+  final String eventId;
+  const PurchaseDetailPage({Key? key, required this.eventId}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final Event event = (context.read<EventListBloc>().state as EventListLoaded)
+        .events
+        .firstWhere((e) => e.id == eventId);
+
     return BlocProvider(
       create: (context) {
-        final SvgDataSource svgDataSource = SvgDataSourceImpl();
-        final SvgRepositoryImpl svgRepository = SvgRepositoryImpl(
-          dataSource: svgDataSource,
+        final SvgDataSource dataSource = SvgDataSourceImpl();
+        final SvgRepositoryImpl repository = SvgRepositoryImpl(
+          dataSource: dataSource,
         );
-        final GetSvgData getSvgDataUseCase = GetSvgData(svgRepository);
-        return PurchaseDetailBloc(getSvgData: getSvgDataUseCase)
+        final GetSvgData useCase = GetSvgData(repository);
+        return PurchaseDetailBloc(getSvgData: useCase)
           ..add(LoadStadium(event.svgPath));
       },
       child: _PurchaseDetailView(event: event),
@@ -290,7 +296,7 @@ class _PurchaseDetailViewState extends State<_PurchaseDetailView> {
           child: ElevatedButton(
             onPressed: !hasTickets
                 ? null
-                : () {
+                : () async {
                     // --- SECCIÓN CORREGIDA ---
                     final firstSelectedType = state.ticketQuantities.entries
                         .firstWhereOrNull((e) => e.value > 0);
@@ -306,20 +312,24 @@ class _PurchaseDetailViewState extends State<_PurchaseDetailView> {
                     );
 
                     if (sectorToNavigate != null) {
-                      // Si encontramos el sector, navegamos.
-                      context.goNamed(
+                      // 1. Navegamos y ESPERAMOS a que el usuario regrese de esta pantalla.
+                      await context.pushNamed(
                         'sector-detail',
-                        extra: {
-                          'event': widget.event,
-                          'sector': sectorToNavigate,
-                        },
+                        pathParameters: {'eventId': widget.event.id},
+                        extra: sectorToNavigate,
                       );
+
+                      // 2. Cuando el usuario regresa, disparamos el evento para reiniciar el estado.
+                      if (mounted) {
+                        context.read<PurchaseDetailBloc>().add(
+                          ResetPurchaseState(),
+                        );
+                      }
                     } else {
-                      // Si no, mostramos un mensaje en lugar de crashear.
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text(
-                            'Error: No se encontró un sector disponible para esa selección.',
+                            'Error: No se encontró un sector disponible.',
                           ),
                         ),
                       );

@@ -37,3 +37,5 @@ class SectorTapped extends PurchaseDetailEvent {
   @override
   List<Object> get props => [sectorId];
 }
+
+class ResetPurchaseState extends PurchaseDetailEvent {}

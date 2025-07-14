@@ -48,7 +48,8 @@ class _EventListPageState extends State<EventListPage> {
                     event: event,
                     onTap: () {
                       // ACTUALIZACIÓN: Usamos GoRouter para navegar y pasar el objeto
-                      context.goNamed('event-detail', extra: event);
+                       context.go('/evento/${event.id}');
+
                     },
                   );
                 },

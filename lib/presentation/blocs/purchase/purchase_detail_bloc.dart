@@ -19,6 +19,7 @@ class PurchaseDetailBloc extends Bloc<PurchaseDetailEvent, PurchaseDetailState> 
     on<LoadStadium>(_onLoadStadium);
     on<QuantityChanged>(_onQuantityChanged);
     on<SectorTapped>(_onSectorTapped);
+     on<ResetPurchaseState>(_onResetState);
   }
 
   Future<void> _onLoadStadium(LoadStadium event, Emitter<PurchaseDetailState> emit) async {
@@ -73,6 +74,17 @@ class PurchaseDetailBloc extends Bloc<PurchaseDetailEvent, PurchaseDetailState> 
       // Incrementa la cantidad del sector correspondiente
       final currentQuantity = state.ticketQuantities[tappedSector.customId!] ?? 0;
       add(QuantityChanged(tappedSector.customId!, currentQuantity + 1));
+    }
+  }
+
+  void _onResetState(ResetPurchaseState event, Emitter<PurchaseDetailState> emit) {
+    if (state.status == PurchaseStatus.loaded) {
+      // Reiniciamos solo las cantidades, manteniendo los datos ya cargados.
+      emit(state.copyWith(
+        ticketQuantities: {
+          for (var s in state.uniqueSectorTypes) (s.customId ?? s.id): 0
+        },
+      ));
     }
   }
 }
