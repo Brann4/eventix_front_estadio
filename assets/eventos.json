@@ -5,7 +5,7 @@
     "artista": "Leyendas del Rock",
     "fecha": "2025-10-15",
     "lugar": "Estadio Nacional",
-    "imagenUrl": "https://i.imgur.com/Tuu52iM.png",
+    "imagenUrl": "https://i.imgur.com/0K2a7Ug.jpeg",
     "svgPath": "assets/estadio.svg"
   },
   {
@@ -14,7 +14,7 @@
     "artista": "Fútbol Profesional",
     "fecha": "2025-11-20",
     "lugar": "Estadio Monumental",
-    "imagenUrl": "https://i.imgur.com/O15rN2b.png",
+    "imagenUrl": "https://i.imgur.com/wkFy4tM.jpeg",
     "svgPath": "assets/estadio_2.svg"
   }
 ]

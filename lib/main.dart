@@ -1,33 +1,28 @@
-import 'package:eventix_estadio/features/presentation/pages/1_eventos_page.dart';
-import 'package:eventix_estadio/features/presentation/pages/stadium_map_page.dart';
-import 'package:eventix_estadio/features/presentation/provider/stadium_map_provider.dart';
+import 'package:eventix_estadio/core/app_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:provider/provider.dart';
-import 'dependency_injector.dart' as di;
+import 'package:intl/date_symbol_data_local.dart';
+import 'core/routes/app_router.dart';
 
-Future<void> main() async  {
-  // Inicializa el inyector de dependencias
+void main() async {
+  // Aseguramos que los bindings de Flutter estén inicializados
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializamos la localización para el formato de fechas en español
+  await initializeDateFormatting('es_ES', null);
 
-  await dotenv.load(fileName: ".env.development");
-
-  di.init();
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Visor de Estadios',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-      ),
-      home: const EventosPage(),
+    return MaterialApp.router(
+      title: 'Ticket App',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      routerConfig: AppRouter.router,
     );
   }
 }
